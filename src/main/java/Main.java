@@ -76,6 +76,32 @@ public class Main {
                 (vidmode.height() - HEIGHT) / 2
         );
 
+        glfwSetMouseButtonCallback(window, (windowHnd, button, action, mods) -> {
+            String state;
+            switch (action) {
+                case GLFW_RELEASE:
+                    state = "released";
+                    break;
+                case GLFW_PRESS:
+                    state = "pressed";
+                    break;
+                default:
+                    throw new IllegalArgumentException(String.format("Unsupported mouse button action: 0x%X", action));
+            }
+            if(state == "pressed") {
+                DoubleBuffer b1 = BufferUtils.createDoubleBuffer(1);
+                DoubleBuffer b2 = BufferUtils.createDoubleBuffer(1);
+                glfwGetCursorPos(window, b1, b2);
+                System.out.println("x : " + b1.get(0) + ", y = " + b2.get(0));
+            }
+            if(state == "released"){
+                DoubleBuffer b1 = BufferUtils.createDoubleBuffer(1);
+                DoubleBuffer b2 = BufferUtils.createDoubleBuffer(1);
+                glfwGetCursorPos(window, b1, b2);
+                System.out.println("x : " + b1.get(0) + ", y = " + b2.get(0));
+            }
+        });
+
         // Make the OpenGL context current
         glfwMakeContextCurrent(window);
         // Enable v-sync
@@ -101,12 +127,14 @@ public class Main {
         while (!glfwWindowShouldClose(window)) {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
-            GLFW.glfwSetMouseButtonCallback(window,new GLFWMouseButtonCallback() {
-                        @Override
-                        public void invoke(long window, int button, int action, int mods) {
-                            if (action == GLFW_PRESS) System.out.println("TESTE");
-                        }
-                    });
+
+
+//            GLFW.glfwSetMouseButtonCallback(window,new GLFWMouseButtonCallback() {
+//                        @Override
+//                        public void invoke(long window, int button, int action, int mods) {
+//                            if (action == GLFW_PRESS) System.out.println("TESTE");
+//                        }
+//                    });
 
 //                glfwSetCursorPosCallback(window, mouseCallback);
 
@@ -121,3 +149,4 @@ public class Main {
     }
 
 }
+
