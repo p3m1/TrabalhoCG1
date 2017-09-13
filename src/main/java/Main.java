@@ -1,24 +1,24 @@
 import org.lwjgl.BufferUtils;
-import org.lwjgl.glfw.*;
-import org.lwjgl.opengl.*;
-
 import org.lwjgl.Version;
+import org.lwjgl.glfw.GLFWCursorPosCallback;
+import org.lwjgl.glfw.GLFWErrorCallback;
+import org.lwjgl.glfw.GLFWVidMode;
+import org.lwjgl.opengl.GL;
 
-import java.nio.Buffer;
 import java.nio.DoubleBuffer;
-import java.nio.IntBuffer;
 
-import static org.lwjgl.glfw.Callbacks.*;
-
+import static org.lwjgl.glfw.Callbacks.glfwFreeCallbacks;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.system.MemoryUtil.*;
+import static org.lwjgl.system.MemoryUtil.NULL;
 
 
 public class Main {
 
     // The window handle
     private long window;
+    private GLFWCursorPosCallback mouseCallback;
+    String state;
 
     public void run() {
         System.out.println("Hello LWJGL " + Version.getVersion() + "!");
@@ -78,7 +78,7 @@ public class Main {
         );
 
         glfwSetMouseButtonCallback(window, (windowHnd, button, action, mods) -> {
-            String state;
+
             switch (action) {
                 case GLFW_RELEASE:
                     state = "released";
@@ -89,25 +89,10 @@ public class Main {
                 default:
                     throw new IllegalArgumentException(String.format("Unsupported mouse button action: 0x%X", action));
             }
-            DoubleBuffer a1 = BufferUtils.createDoubleBuffer(1);
-            DoubleBuffer a2 = BufferUtils.createDoubleBuffer(1);
-            DoubleBuffer b1 = BufferUtils.createDoubleBuffer(1);
-            DoubleBuffer b2 = BufferUtils.createDoubleBuffer(1);
-            if(state == "pressed") {
-                glfwGetCursorPos(window, a1, a2);
-                System.out.println("x : " + b1.get(0) + ", y = " + b2.get(0));
-            }
-            if(state == "released"){
-                glfwGetCursorPos(window, b1, b2);
-                System.out.println("x : " + b1.get(0) + ", y = " + b2.get(0));
-                int x0 = (int) a1.get(0);
-                int y0 = (int) a2.get(0);
-                int x1 = (int) b1.get(0);
-                int y1 = (int) b2.get(0);
-
-                desenhaLinha(x0,y0,x1,y1);
-            }
         });
+
+//        glfwSetCursorPosCallback(window, mouseCallback = new MouseHandler());
+
 
         // Make the OpenGL context current
         glfwMakeContextCurrent(window);
@@ -117,6 +102,10 @@ public class Main {
         // Make the window visible
         glfwShowWindow(window);
     }
+
+    DoubleBuffer posX = BufferUtils.createDoubleBuffer(1);
+    DoubleBuffer posY = BufferUtils.createDoubleBuffer(1);
+    double x0, y0, x1, y1;
 
     private void loop() {
         // This line is critical for LWJGL's interoperation with GLFW's
@@ -131,34 +120,54 @@ public class Main {
 
         // Run the rendering loop until the user has attempted to close
         // the window or has pressed the ESCAPE key.
+
+        glOrtho(0,800,600,0,0,1);
         while ( !glfwWindowShouldClose(window) ) {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
+            glfwGetCursorPos(window, posX, posY);
+            double x = posX.get(0);
+            double y = posY.get(0);
+            boolean teste = false;
+            if(state=="pressed"){
+                x0 = x;
+                y0 = y;
+                teste = true;
+                while(teste){
+                    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                    glfwGetCursorPos(window, posX, posY);
+                    desenhaLinha(x0, y0, posX.get(0), posY.get(0));
+                    glfwSwapBuffers(window); // swap the color buffers
+                    // Poll for window events. The key callback above will only be
+                    // invoked during this call.
+                    glfwPollEvents();
+                    if(state=="released")
+                        teste = false;
+                }
+                if(state=="released"){
+                    x1 = posX.get(0);
+                    y1 = posY.get(0);
+                    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                    glfwGetCursorPos(window, posX, posY);
+                    desenhaLinha(x0, y0, posX.get(0), posY.get(0));
+                    glfwSwapBuffers(window); // swap the color buffers
+                    // Poll for window events. The key callback above will only be
+                    // invoked during this call.
+                    glfwPollEvents();
+                }
+            }
+            desenhaLinha(x0,y0,x1,y1);
+            System.out.println(x+ " "+y);
             glfwSwapBuffers(window); // swap the color buffers
-
-            glColor3f(1.0f,0.0f,0.0f);
-//            glBegin(GL_LINE_STRIP);
-//            glVertex2i(0,0);
-//            glVertex2i(1,1);
-//            glEnd();
-//            desenhaPixel(0,0);
-            glfwSwapBuffers(window);
-
             // Poll for window events. The key callback above will only be
             // invoked during this call.
             glfwPollEvents();
         }
     }
 
-    public void desenhaLinha(int x0, int y0, int x1, int y1){
-        IntBuffer buffer = BufferUtils.createIntBuffer(4);
-        glGetIntegerv(GL_VIEWPORT, buffer);
-        int height = buffer.get(3);
 
-        y0 = height - y0;
-        y1 = height - y1;
-
-        int dx = 0, dy = 0, incE, incNE, d, x, y;
+    public void desenhaLinha(double x0, double y0, double x1, double y1){
+        double dx = 0, dy = 0, incE, incNE, d, x, y;
 
         boolean dx_menor_dy = false;
 
@@ -170,13 +179,10 @@ public class Main {
         if(Math.abs(dx) < Math.abs(dy)){
             dx_menor_dy = true;
 
-            int aux = dx;
+            double aux = dx;
             dx = dy;
             dy = aux;
 
-            aux = x0;
-            x0 = y0;
-            y0 = aux;
 
             aux = x0;
             x0 = y0;
@@ -188,7 +194,7 @@ public class Main {
         }
 
         if(x1<x0){
-            int aux = x1;
+            double aux = x1;
             x1 = x0;
             x0 = aux;
 
@@ -213,24 +219,34 @@ public class Main {
         y = y0;
 
         while(x <= x1){
-            desenhaPixel(x,y);
+            if (!dx_menor_dy) {
+                desenhaPixel(x, y);
+            } else {
+                desenhaPixel(y, x);
+            }
 
-            x++;
+            x ++;
             if(d <= 0){
                 d = d + incE;
             } else {
-                d = d + incE;
+                d = d + incNE;
                 y += dy_signal;
             }
         }
     }
 
-    public void desenhaPixel(int x, int y){
+    public void desenhaPixel(double x, double y){
         glColor3f(0.0f,0.0f,0.0f);
         glBegin(GL_POINTS);
-        glVertex2i(x,y);
+            glColor3i(1,1,1);
+            glVertex2d(x,y);
         glEnd();
-        glfwSwapBuffers(window);
+
+//        glBegin(GL_POINTS);
+//            glColor3i(1,0,0);
+//            for(double d=0; d<1; d+=0.001 )
+//            glVertex2d(d, d);
+//            glEnd();
     }
 
     public static void main(String[] args) {
